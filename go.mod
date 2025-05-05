@@ -1,6 +1,6 @@
 module api
 
-go 1.24.2
+go 1.23
 
 require (
 	github.com/alexedwards/argon2id v1.0.0
