@@ -1,0 +1,20 @@
+# Archivos sensibles
+.env
+
+# Carpeta que no querés subir
+Main/
+
+# Archivos temporales del sistema/editor
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Binarios y compilados de Go
+*.exe
+*.out
+*.test
+
+# Archivos de logs
+*.log
