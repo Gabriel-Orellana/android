@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -229,81 +227,6 @@ func verifyAndRefreshTokens(accessToken, refreshToken string, conn *pgxpool.Pool
 	}
 
 	return newAccessTokenString, newRefreshTokenString, nil
-}
-
-func getProductss(c *gin.Context, conn *pgxpool.Pool) {
-	var tokens struct {
-		AccessToken  string `json:"accessToken"`
-		RefreshToken string `json:"refreshToken"`
-	}
-
-	if err := c.ShouldBindJSON(&tokens); err != nil {
-		c.JSON(400, gin.H{"error": "Faltan los tokens de acceso o refresco"})
-		return
-	}
-
-	newAccessToken, newRefreshToken, err := verifyAndRefreshTokens(tokens.AccessToken, tokens.RefreshToken, conn)
-	if err != nil {
-		c.JSON(401, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Obtener productos de la DB
-	rows, err := conn.Query(context.Background(), `SELECT * FROM products`)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Error al obtener productos"})
-		return
-	}
-	defer rows.Close()
-
-	products := []map[string]interface{}{}
-	for rows.Next() {
-		values, err := rows.Values()
-		if err != nil {
-			continue
-		}
-		rowMap := map[string]interface{}{}
-		fields := rows.FieldDescriptions()
-		for i, field := range fields {
-			rowMap[string(field.Name)] = values[i]
-		}
-
-		// Convertir la foto a base64
-		if photoPath, ok := rowMap["photo"].(string); ok && photoPath != "" {
-			fullPath := filepath.Join(".", photoPath)
-			imageBytes, err := os.ReadFile(fullPath)
-			if err == nil {
-				base64Image := base64.StdEncoding.EncodeToString(imageBytes)
-
-				// Detectar extensión para poner tipo MIME
-				var mimeType string
-				switch strings.ToLower(filepath.Ext(photoPath)) {
-				case ".jpg", ".jpeg":
-					mimeType = "image/jpeg"
-				case ".png":
-					mimeType = "image/png"
-				case ".webp":
-					mimeType = "image/webp"
-				default:
-					mimeType = "application/octet-stream"
-				}
-
-				// Reemplazar photo con la imagen en base64 (con MIME)
-				rowMap["photo"] = "data:" + mimeType + ";base64," + base64Image
-			} else {
-				rowMap["photo"] = "" // En caso de error, dejar vacío
-			}
-		}
-
-		products = append(products, rowMap)
-	}
-
-	c.JSON(200, gin.H{
-		"message":      "Productos obtenidos exitosamente",
-		"products":     products,
-		"accessToken":  newAccessToken,
-		"refreshToken": newRefreshToken,
-	})
 }
 
 func getProducts(c *gin.Context, conn *pgxpool.Pool) {
